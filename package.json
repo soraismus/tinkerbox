@@ -1,0 +1,31 @@
+{
+  "name": "tinkerbox",
+  "private": true,
+  "version": "0.0.1",
+  "description": "A library that facilitates creation and modification of DOM nodes.",
+  "directories": {
+    "src": "./src"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github.com/matthew-hilty/tinkerbox.git"
+  },
+  "keywords": [
+    "DOM",
+    "node",
+    "element",
+    "HTML",
+    "factory",
+    "create",
+    "modify"
+  ],
+  "author": "Matthew Hilty",
+  "license": "MIT",
+  "devDependencies": {
+    "browserify": "^8.1.1"
+  }
+}
