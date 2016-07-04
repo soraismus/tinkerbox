@@ -16,7 +16,8 @@ function createElement(tag) {
       }
     }
     if (arguments.length > 1) {
-      element.children = Array.prototype.slice.call(arguments, 1);
+      element.children = [].concat.apply([], [].slice.call(arguments, 1))
+          
     }
     return element;
   };
