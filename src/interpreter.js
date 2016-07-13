@@ -67,117 +67,102 @@ function findChildren(parent, config) {
   return Array.prototype.slice.call(htmlCollection);
 }
 
-function modifyElement(node, config) {
-  if (config.classes != null) {
-    for (var op in config.classes) {
-      switch (op) {
-        case 'add':
-          for (var klass in config.classes[op]) {
-            node.classList.add(klass);
+function isNaN(value) {
+  return isNumber(value) && value !== +value;
+}
+
+function isNumber(value) {
+  return {}.toString.call(value) === '[object Number]';
+}
+
+function modifyElement(node, patch) {
+  _modifyElement(node, patch.value, patch.commands);
+}
+
+function _modifyElement(node, tree, commands) {
+  for (var i = 0; i < tree.length; i++) {
+    var key = tree[i].index;
+    var continuation = tree[i].value;
+
+  //for (var key in tree) {
+
+    switch (key) {
+      case 'id':
+        break;
+      case 'tag':
+        break;
+      case 'style':
+        for (var styleIndex = 0; styleIndex < continuation.length; styleIndex++) {
+          var style = continuation[styleIndex].index;
+          var command = commands[continuation[styleIndex].value];
+          switch (command[0]) {
+            case 'delete':
+              node.style.removeProperty(style);
+              break;
+            case 'replace':
+            case 'setAtKey':
+              node.style[style] = command[1];
+              break;
           }
-          break;
-        case 'remove':
-          for (var klass in config.classes[op]) {
-            node.classList.remove(klass);
+        }
+        break;
+
+      case 'attribs':
+        for (var attribIndex = 0; attribIndex < continuation.length; attribIndex++) {
+          var attrib = continuation[attribIndex].index;
+          var command = commands[continuation[attribIndex].value];
+          switch (command[0]) {
+            case 'delete':
+              node.attributes.removeNamedItem(attrib);
+              break;
+            case 'replace':
+            case 'setAtKey':
+              node.setAttribute(attrib, command[1]);
+              break;
           }
-          break;
-        default:
-          throw new Error('invalid \"modifyElement.classes\" mode');
-      }
-    }
-  }
-  if (config.attribs != null) {
-    for (var op in config.attribs) {
-      switch (op) {
-        case 'set':
-          for (var attribKey in config.attribs[op]) {
-            node.setAttribute(attribKey, config.attribs[op][attribKey]);
+        }
+        break;
+
+      case 'classes':
+        for (var classIndex = 0; classIndex < continuation.length; classIndex++) {
+          var _class = continuation[classIndex].index;
+          var command = commands[continuation[classIndex].value];
+          switch (command[0]) {
+            case 'delete':
+              node.classList.remove(_class);
+              break;
+            case 'setAtKey':
+              node.classList.add(_class);
+              break;
           }
-          break;
-        case 'unset':
-          for (var attribKey in config.attribs[op]) {
-            node.attributes.removeNamedItem(attribKey);
-          }
-          break;
-        default:
-          throw new Error('invalid \"modifyElement.attribs\" mode');
-      }
-    }
-  }
-  if (config.style != null) {
-    for (var op in config.style) {
-      switch (op) {
-        case 'set':
-          for (var styleKey in config.style[op]) {
-            node.style[styleKey] = config.style[op][styleKey];
-          }
-          break;
-        case 'unset':
-          for (var styleKey in config.style[op]) {
-            node.style.removeProperty(styleKey);
-          }
-          break;
-        default:
-          throw new Error('invalid \"modifyElement.style\" mode');
-      }
-    }
-  }
-  if (config.children != null) {
-    for (var op in config.children) {
-      switch (op) {
-        case 'add':
-          for (var index in config.children[op]) {
-            createAndAttachElement(node, config.children[op][index]);
-          }
-          break;
-        case 'modify':
-          for (var index in config.children[op]) {
-            modifyElement(
-              findChild(node, config.children[op][index].child),
-              config.children[op][index].changes);
-          }
-          break;
-        case 'remove':
-          for (var index in config.children[op]) {
-            removeNode(findChild(node, config.children[op][index]));
-          }
-          break;
-        case 'removeAll':
-          var children = findChildren(node, config.children[op]);
-          for (var index in children) {
-            removeNode(children[index]);
-          }
-          break;
-        default:
-          throw new Error('invalid \"modifyElement.children\" mode');
-      }
-    }
-  }
-  if (config.text != null) {
-    for (var op in config.text) {
-      switch (op) {
-        case 'append':
-          node.innerText += config.text[op];
-          break;
-        case 'erase':
-          node.innerText = '';
-          break;
-        case 'prepend':
-          node.innerText = config.text[op] + node.innerText;
-          break;
-        case 'replace':
-          node.innerText = config.text[op];
-          break;
-        case 'slice':
-          if (config.text[op].end == null) {
-            node.innerText = node.innerText.slice(config.text[op].start);
+        }
+        break;
+
+      case 'children':
+        for (var childIndex = 0; childIndex < continuation.length; childIndex++) {
+          var child = continuation[childIndex].index;
+          var childContinuation = continuation[childIndex].value;
+          if (isNaN(parseInt(childContinuation, 10))) {
+            _modifyElement(node.childNodes[child], childContinuation, commands);
           } else {
-            node.innerText = node.innerText.slice(config.text[op].start, config.text[op].end);
+            var command = commands[childContinuation]
+            switch (command[0]) {
+              case 'delete':
+              case 'remove':
+                removeNode(findChild(node, { mode: 'index', key: child }));
+                break;
+              case 'replace':     // ?
+                //node.innerText = command[1];
+                createAndAttachElement(node, command[1]);
+                break;
+              case 'insertAtEnd': // ?
+              case 'setAtKey':    // ?
+                createAndAttachElement(node, command[1]);
+                break;
+            }
           }
-          break;
-        default:
-          throw new Error('invalid \"modifyElement.text\" mode');
-      }
+        }
+        break;
     }
   }
 }
