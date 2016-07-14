@@ -5,6 +5,9 @@ function createElement(tag) {
     }
     var element = { tag: tag };
     for (var key in config) {
+      if (key === 'id') {
+        element.id = config.id;
+      }
       if (key === 'classes') {
         element.classes = config.classes;
       }
