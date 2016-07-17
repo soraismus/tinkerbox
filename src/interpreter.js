@@ -10,6 +10,12 @@ function createAndAttachElement(parent, config) {
   attachElement(parent, createElement(config));
 }
 
+function createAndAttachElements(node, elements) {
+  for (var i = 0; i < elements.length; i++) {
+    createAndAttachElement(node, elements[i]);
+  }
+}
+
 function createElement(config) {
   if (isString(config)) {
     return config;
@@ -78,8 +84,8 @@ function findChildren(parent, config) {
   return Array.prototype.slice.call(htmlCollection);
 }
 
-function isDiff(value) {
-  return isNaN(parseInt(value, 10));
+function isCommandIndex(value) {
+  return !isNaN(parseInt(value, 10));
 }
 
 function isNaN(value) {
@@ -158,30 +164,58 @@ function _modifyElement(node, tree, commands) {
         break;
 
       case 'children':
-        for (var childIndex = 0; childIndex < continuation.length; childIndex++) {
-          var child = continuation[childIndex].index;
-          var childContinuation = continuation[childIndex].value;
-          if (isDiff(childContinuation)) {
-            _modifyElement(node.childNodes[child], childContinuation, commands);
-          } else {
-            var command = commands[childContinuation]
-            switch (command[0]) {
-              case 'delete':
-              case 'remove':
-                removeNode(findChild(node, { mode: 'index', key: child }));
-                break;
-              case 'replace':     // ?
-                createAndAttachElement(node, command[1]);
-                break;
-              case 'insertAtEnd': // ?
-              case 'setAtKey':    // ?
-                createAndAttachElement(node, command[1]);
-                break;
+        if (isCommandIndex(continuation)) {
+          var command = commands[continuation]
+          switch (command[0]) {
+            case 'delete':
+            case 'remove':
+              removeChildren(node);
+              break;
+            case 'replace':     // ?
+              removeChildren(node);
+              createAndAttachElements(node, command[1]);
+              break;
+            case 'insertAtEnd': // ?
+            case 'setAtKey':    // ?
+              break;
+          }
+        } else {
+          for (var childIndex = 0; childIndex < continuation.length; childIndex++) {
+            var child = continuation[childIndex].index;
+            var childContinuation = continuation[childIndex].value;
+            if (isCommandIndex(childContinuation)) {
+              var command = commands[childContinuation]
+              switch (command[0]) {
+                case 'delete':
+                case 'remove':
+                  removeChild(node, child);
+                  break;
+                case 'replace':     // ?
+                  createAndAttachElement(node, command[1]);
+                  break;
+                case 'insertAtEnd': // ?
+                case 'setAtKey':    // ?
+                  createAndAttachElement(node, command[1]);
+                  break;
+              }
+            } else {
+              _modifyElement(node.childNodes[child], childContinuation, commands);
             }
           }
         }
         break;
     }
+  }
+}
+
+function removeChild(node, childIndex) {
+  removeNode(findChild(node, { mode: 'index', key: childIndex }));
+}
+
+function removeChildren(node) {
+  var childCount = node.childNodes.length;
+  for (var i = childCount - 1; i >= 0; i--) {
+    node.removeChild(node.childNodes[i]);
   }
 }
 
