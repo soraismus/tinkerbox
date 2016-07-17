@@ -1,35 +1,46 @@
-function createAndAttachElement(parent, config) {
-  if (Object.prototype.toString.call(config) === '[object String]') {
-    parent.innerText = config;
+function attachElement(parent, element) {
+  if (isString(element)) {
+    parent.innerText = element;
   } else {
-    var node = document.createElement(config.tag);
-    if (config.id != null) {
-      node.id = config.id;
-    }
-    if (config.classes != null) {
-      for (var klass in config.classes) {
-        node.classList.add(klass);
-      }
-    }
-    if (config.attribs != null) {
-      for (var attribKey in config.attribs) {
-        if (attribKey !== 'style') {
-          node.setAttribute(attribKey, config.attribs[attribKey]);
-        }
-      }
-    }
-    if (config.style != null) {
-      for (var styleKey in config.style) {
-        node.style[styleKey] = config.style[styleKey];
-      }
-    }
-    if (config.children != null) {
-      config.children.forEach(function (newConfig, index) { 
-        createAndAttachElement(node, newConfig);
-      });
-    }
-    parent.appendChild(node);
+    parent.appendChild(element);
   }
+}
+
+function createAndAttachElement(parent, config) {
+  attachElement(parent, createElement(config));
+}
+
+function createElement(config) {
+  if (isString(config)) {
+    return config;
+  }
+  var node = document.createElement(config.tag);
+  if (config.id != null) {
+    node.id = config.id;
+  }
+  if (config.classes != null) {
+    for (var klass in config.classes) {
+      node.classList.add(klass);
+    }
+  }
+  if (config.attribs != null) {
+    for (var attribKey in config.attribs) {
+      if (attribKey !== 'style') {
+        node.setAttribute(attribKey, config.attribs[attribKey]);
+      }
+    }
+  }
+  if (config.style != null) {
+    for (var styleKey in config.style) {
+      node.style[styleKey] = config.style[styleKey];
+    }
+  }
+  if (config.children != null) {
+    config.children.forEach(function (newConfig, index) { 
+      createAndAttachElement(node, newConfig);
+    });
+  }
+  return node;
 }
 
 function findChild(parent, config) {
@@ -67,12 +78,20 @@ function findChildren(parent, config) {
   return Array.prototype.slice.call(htmlCollection);
 }
 
+function isDiff(value) {
+  return isNaN(parseInt(value, 10));
+}
+
 function isNaN(value) {
   return isNumber(value) && value !== +value;
 }
 
 function isNumber(value) {
   return {}.toString.call(value) === '[object Number]';
+}
+
+function isString(value) {
+  return {}.toString.call(value) === '[object String]';
 }
 
 function modifyElement(node, patch) {
@@ -84,13 +103,13 @@ function _modifyElement(node, tree, commands) {
     var key = tree[i].index;
     var continuation = tree[i].value;
 
-  //for (var key in tree) {
-
     switch (key) {
       case 'id':
         break;
+
       case 'tag':
         break;
+
       case 'style':
         for (var styleIndex = 0; styleIndex < continuation.length; styleIndex++) {
           var style = continuation[styleIndex].index;
@@ -142,7 +161,7 @@ function _modifyElement(node, tree, commands) {
         for (var childIndex = 0; childIndex < continuation.length; childIndex++) {
           var child = continuation[childIndex].index;
           var childContinuation = continuation[childIndex].value;
-          if (isNaN(parseInt(childContinuation, 10))) {
+          if (isDiff(childContinuation)) {
             _modifyElement(node.childNodes[child], childContinuation, commands);
           } else {
             var command = commands[childContinuation]
@@ -152,7 +171,6 @@ function _modifyElement(node, tree, commands) {
                 removeNode(findChild(node, { mode: 'index', key: child }));
                 break;
               case 'replace':     // ?
-                //node.innerText = command[1];
                 createAndAttachElement(node, command[1]);
                 break;
               case 'insertAtEnd': // ?
