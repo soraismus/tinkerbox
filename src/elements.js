@@ -1,29 +1,45 @@
 function createElement(tag) {
   return function (config) {
-    if (config == null) {
-      config = {};
-    }
     var element = { tag: tag };
-    for (var key in config) {
-      if (key === 'id') {
-        element.id = config.id;
-      }
-      if (key === 'classes') {
-        element.classes = config.classes;
-      }
-      if (key === 'style') {
-        element.style = config.style;
-      }
-      if (key === 'attribs') {
-        element.attribs = config.attribs;
+
+    if (config != null) { // isObject
+
+      for (var key in config) {
+        if (key === 'id') {
+          element.id = config.id;
+        }
+
+        if (key === 'classes') {
+          element.classes = config.classes;
+        }
+
+        if (key === 'style') {
+          element.style = config.style;
+        }
+
+        if (key === 'attribs') {
+          element.attribs = config.attribs;
+        }
       }
     }
+
     if (arguments.length > 1) {
-      element.children = [].concat.apply([], [].slice.call(arguments, 1))
-          
+      var args = [].slice.call(arguments, 1);
+
+      if (args.length === 1 && isString(args[0])) {
+        element.children = args[0];
+      } else {
+        element.children = [].concat.apply([], args);
+      }
     }
+
     return element;
   };
+}
+
+// WET.
+function isString(value) {
+  return {}.toString.call(value) === '[object String]';
 }
 
 var tags = {

@@ -1,13 +1,28 @@
 function attachElement(parent, element) {
   if (isString(element)) {
-    parent.innerText = element;
+    parent.innerText = element; // ?
   } else {
     parent.appendChild(element);
   }
 }
 
+function replaceElement(parent, newElement, oldElement) {
+  if (isString(newElement)) {
+    parent.innerText = newElement; // ?
+  } else {
+    parent.replaceChild(newElement, oldElement);
+  }
+}
+
 function createAndAttachElement(parent, config) {
   attachElement(parent, createElement(config));
+}
+
+function createAndSubstituteElement(parent, config, oldElementIndex) {
+  replaceElement(
+    parent,
+    createElement(config),
+    findChild(parent, { mode: 'index', key: oldElementIndex }));
 }
 
 function createAndAttachElements(node, elements) {
@@ -21,30 +36,34 @@ function createElement(config) {
     return config;
   }
   var node = document.createElement(config.tag);
-  if (config.id != null) {
+  if (config.id != null) { // isString
     node.id = config.id;
   }
-  if (config.classes != null) {
+  if (config.classes != null) { // isObject
     for (var klass in config.classes) {
       node.classList.add(klass);
     }
   }
-  if (config.attribs != null) {
+  if (config.attribs != null) { // isObject
     for (var attribKey in config.attribs) {
       if (attribKey !== 'style') {
         node.setAttribute(attribKey, config.attribs[attribKey]);
       }
     }
   }
-  if (config.style != null) {
+  if (config.style != null) { // isObject
     for (var styleKey in config.style) {
       node.style[styleKey] = config.style[styleKey];
     }
   }
   if (config.children != null) {
-    config.children.forEach(function (newConfig, index) { 
-      createAndAttachElement(node, newConfig);
-    });
+    if (isString(config.children)) {
+      createAndAttachElement(node, config.children);
+    } else { // isObject
+      config.children.forEach(function (newConfig, index) { 
+        createAndAttachElement(node, newConfig);
+      });
+    }
   }
   return node;
 }
@@ -85,7 +104,8 @@ function findChildren(parent, config) {
 }
 
 function isCommandIndex(value) {
-  return !isNaN(parseInt(value, 10));
+  //return !isNaN(parseInt(value, 10));
+  return isNumber(value);
 }
 
 function isNaN(value) {
@@ -111,12 +131,23 @@ function _modifyElement(node, tree, commands) {
 
     switch (key) {
       case 'id':
+        var command = commands[continuation];
+        switch (command[0]) {
+          case 'delete':
+            node.removeAttribute('id');
+            break;
+          case 'replace':
+          case 'setAtKey':
+            node.id = command[1];
+            break;
+        }
         break;
 
       case 'tag':
         break;
 
       case 'style':
+        // TODO: In case the continuation is a command index.
         for (var styleIndex = 0; styleIndex < continuation.length; styleIndex++) {
           var style = continuation[styleIndex].index;
           var command = commands[continuation[styleIndex].value];
@@ -133,6 +164,7 @@ function _modifyElement(node, tree, commands) {
         break;
 
       case 'attribs':
+        // TODO: In case the continuation is a command index.
         for (var attribIndex = 0; attribIndex < continuation.length; attribIndex++) {
           var attrib = continuation[attribIndex].index;
           var command = commands[continuation[attribIndex].value];
@@ -149,16 +181,32 @@ function _modifyElement(node, tree, commands) {
         break;
 
       case 'classes':
-        for (var classIndex = 0; classIndex < continuation.length; classIndex++) {
-          var _class = continuation[classIndex].index;
-          var command = commands[continuation[classIndex].value];
+        if (isCommandIndex(continuation)) {
+          var command = commands[0];
           switch (command[0]) {
             case 'delete':
-              node.classList.remove(_class);
+              for (var _class in command[1]) {
+                node.classList.remove(_class);
+              }
               break;
             case 'setAtKey':
-              node.classList.add(_class);
+              for (var _class in command[1]) {
+                node.classList.add(_class);
+              }
               break;
+          }
+        } else {
+          for (var classIndex = 0; classIndex < continuation.length; classIndex++) {
+            var _class = continuation[classIndex].index;
+            var command = commands[continuation[classIndex].value];
+            switch (command[0]) {
+              case 'delete':
+                node.classList.remove(_class);
+                break;
+              case 'setAtKey':
+                node.classList.add(_class);
+                break;
+            }
           }
         }
         break;
@@ -167,16 +215,24 @@ function _modifyElement(node, tree, commands) {
         if (isCommandIndex(continuation)) {
           var command = commands[continuation]
           switch (command[0]) {
-            case 'delete':
+            //case 'delete':
             case 'remove':
               removeChildren(node);
               break;
             case 'replace':     // ?
-              removeChildren(node);
-              createAndAttachElements(node, command[1]);
+              if (isString(command[1])) {
+                if (node.childElementCount === 0) {
+                  node.innerText = command[1];
+                } else {
+                  node.innerText = command[1];
+                }
+              } else {
+                removeChildren(node);
+                createAndAttachElements(node, command[1]);
+              }
               break;
             case 'insertAtEnd': // ?
-            case 'setAtKey':    // ?
+            //case 'setAtKey':    // ?
               break;
           }
         } else {
@@ -186,15 +242,15 @@ function _modifyElement(node, tree, commands) {
             if (isCommandIndex(childContinuation)) {
               var command = commands[childContinuation]
               switch (command[0]) {
-                case 'delete':
+                //case 'delete':
                 case 'remove':
                   removeChild(node, child);
                   break;
                 case 'replace':     // ?
-                  createAndAttachElement(node, command[1]);
+                  createAndSubstituteElement(node, command[1], child);
                   break;
                 case 'insertAtEnd': // ?
-                case 'setAtKey':    // ?
+                //case 'setAtKey':    // ?
                   createAndAttachElement(node, command[1]);
                   break;
               }
